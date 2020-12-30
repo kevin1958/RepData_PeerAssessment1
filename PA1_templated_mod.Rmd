@@ -41,10 +41,48 @@ averages[which.max(averages$steps),]
 ```{r}
 sum(is.na(data$steps))
 ```
-##  impute missing values
+# Replace each missing value with the mean value of its 5-minute interval
 ```{r}
-install.packages("class")
-library(class)
-knnImputation(data$steps, k = 10, scale = T, meth = "median",
-              distData = data$interval)
+fill.value <- function(steps, interval) {
+    filled <- NA
+    if (!is.na(steps))
+        filled <- c(steps)
+    else
+        filled <- (averages[averages$interval==interval, "steps"])
+    return(filled)
+}
+filled.data <- data
+filled.data$steps <- mapply(fill.value, filled.data$steps, filled.data$interval)
+```
+## plot histogram
+```{r}
+total.steps <- tapply(filled.data$steps, filled.data$date, FUN=sum)
+qplot(total.steps, binwidth=1000, xlab="total number of steps taken each day")
+```
+##  mean & median of total number of steps per day
+```{r}
+mean(total.steps)
+median(total.steps)
+```
+## weekday and weekends 
+```{r}
+filled_data<- data
+wekday<- function(date){
+  day<-weekdays(date)
+  if(day %in% c("Monday","Tuesday","Wednesday","Thursday","Friday"))
+    return("weekday")
+  else if (day %in% c("Saturday","Sunday"))
+    return("weekend")
+  else
+    stop("invalid date")
+}
+filled.data$date<- as.Date(filled.data$date)
+filled.data$day<-sapply(filled.data$date, wekday)
+
+```
+##panel plot
+```{r}
+averages <- aggregate(steps ~ interval + day, data=filled.data, mean)
+ggplot(averages, aes(interval, steps)) + geom_line() + facet_grid(day ~ .) +
+    xlab("5-minute interval") + ylab("Number of steps")
 ```
